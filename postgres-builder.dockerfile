@@ -43,7 +43,7 @@ WORKDIR /opt/postgresql_modified_for_babelfish/contrib
 RUN make
 
 # Installs the Babelfish PostgreSQL engine
-WORKDIR /opt/postgresql_modified_for_babelfishcd
+WORKDIR /opt/postgresql_modified_for_babelfish
 
 RUN make install
 
