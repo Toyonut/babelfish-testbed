@@ -110,3 +110,29 @@ WORKDIR /opt/babelfish_extensions/contrib/babelfishpg_tsql
 
 RUN make \
     && make install
+
+RUN useradd postgres \
+    && usermod -a -G postgres postgres \
+    && chown -R postgres:postgres /usr/local/pgsql \
+    && mkdir -p /var/run/postgresql \
+    && chown -R postgres:postgres /var/run/postgresql \
+    && chmod 2777 /var/run/postgresql
+
+# make the sample config easier to munge (and "correct by default")
+RUN set -eux; \
+	sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
+	grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
+
+ENV PGDATA="/var/lib/postgresql/data"
+# this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--user" values)
+RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PGDATA"
+
+RUN chmod -R 0750 /usr/local/pgsql/share
+
+USER postgres
+
+RUN /usr/local/pgsql/bin/initdb
+
+EXPOSE 5432
+
+CMD ["/usr/local/pgsql/bin/postgres"]
