@@ -125,18 +125,21 @@ RUN set -eux; \
     echo "$(echo 'host  all  all 0.0.0.0/0 md5' | cat - /usr/local/pgsql/share/pg_hba.conf.sample)" > /usr/local/pgsql/share/pg_hba.conf.sample; \
     grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
 
-ENV PGDATA="/var/lib/postgresql/data"
+ENV PGDATA="/var/lib/postgresql/data" \
+    PATH=$PATH:/usr/local/pgsql/bin/
 # this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--user" values)
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PGDATA"
 
-RUN chmod -R 0750 /usr/local/pgsql/share
+COPY entrypoint.sh /usr/local/bin/
+
+RUN chmod -R 0750 /usr/local/pgsql/share \
+    && chown postgres:postgres /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/entrypoint.sh
 
 USER postgres
 
-RUN /usr/local/pgsql/bin/initdb
-
 EXPOSE 1433
 
-WORKDIR /usr/local/pgsql
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
-CMD ["/usr/local/pgsql/bin/postgres"]
+CMD ["postgres"]
