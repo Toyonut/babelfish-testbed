@@ -120,8 +120,9 @@ RUN useradd postgres \
 
 # make the sample config easier to munge (and "correct by default")
 RUN set -eux; \
-	sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
-	grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
+    sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
+    sed -i 's/#port = 5432/port = 1433/g' /usr/local/pgsql/share/postgresql.conf.sample; \
+    grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
 
 ENV PGDATA="/var/lib/postgresql/data"
 # this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--user" values)
@@ -133,6 +134,8 @@ USER postgres
 
 RUN /usr/local/pgsql/bin/initdb
 
-EXPOSE 5432
+EXPOSE 1433
+
+WORKDIR /usr/local/pgsql
 
 CMD ["/usr/local/pgsql/bin/postgres"]
