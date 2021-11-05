@@ -121,8 +121,6 @@ RUN useradd postgres \
 # make the sample config easier to munge (and "correct by default")
 RUN set -eux; \
     sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
-    sed -i 's/#port = 5432/port = 1433/g' /usr/local/pgsql/share/postgresql.conf.sample; \
-    echo "$(echo 'host  all  all 0.0.0.0/0 md5' | cat - /usr/local/pgsql/share/pg_hba.conf.sample)" > /usr/local/pgsql/share/pg_hba.conf.sample; \
     grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
 
 ENV PGDATA="/var/lib/postgresql/data" \
@@ -136,9 +134,12 @@ RUN chmod -R 0750 /usr/local/pgsql/share \
     && chown postgres:postgres /usr/local/bin/entrypoint.sh \
     && chmod +x /usr/local/bin/entrypoint.sh
 
+WORKDIR /usr/local/pgsql/bin/
+
 USER postgres
 
 EXPOSE 1433
+EXPOSE 5432
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
