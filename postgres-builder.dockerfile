@@ -7,7 +7,7 @@ RUN apt-get update \
     uuid uuid-dev lld pkg-config libossp-uuid-dev gnulib \
     libxml2-utils xsltproc icu-devtools libicu67 libicu-dev gawk \
     # Extras
-    git python3 python3-dev ca-certificates curl software-properties-common
+    git python3 python3-dev ca-certificates curl software-properties-common vim net-tools lsof
 
 # Packages for extensions
 RUN curl https://apt.corretto.aws/corretto.key | apt-key add - \
