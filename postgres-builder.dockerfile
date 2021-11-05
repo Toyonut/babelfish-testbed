@@ -121,6 +121,7 @@ RUN useradd postgres \
 # make the sample config easier to munge (and "correct by default")
 RUN set -eux; \
     sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
+    sed -ri "s+#?shared_preload_libraries.*+shared_preload_libraries = 'babelfishpg_tds'+g" /usr/local/pgsql/share/postgresql.conf.sample; \
     grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
 
 ENV PGDATA="/var/lib/postgresql/data" \
