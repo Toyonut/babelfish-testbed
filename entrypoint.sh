@@ -205,11 +205,29 @@ docker_setup_db() {
 		EOSQL
 	)"
 	if [ -z "$dbAlreadyExists" ]; then
-		POSTGRES_DB= docker_process_sql --dbname postgres --set db="$POSTGRES_DB" <<-'EOSQL'
+		POSTGRES_DB= docker_process_sql --dbname postgres --set db="$POSTGRES_DB"  <<-'EOSQL'
 			CREATE DATABASE :"db" ;
 		EOSQL
 		echo
 	fi
+}
+
+# create initial database
+# uses environment variables for input: POSTGRES_DB
+docker_setup_babelfish_db() {
+	echo "Setting babelfish migration_mode to $BABELFISH_MIGRATION_MODE on DB $POSTGRES_DB"
+	BABELFISH_POSTGRES_DB= docker_process_sql --dbname "$POSTGRES_DB" \
+	--set db="$POSTGRES_DB" \
+	--set mm=$BABELFISH_MIGRATION_MODE \
+	--set user=$POSTGRES_USER <<-'EOSQL'
+		CREATE EXTENSION IF NOT EXISTS "babelfishpg_tds" CASCADE;
+		ALTER DATABASE :db SET babelfishpg_tsql.migration_mode = :'mm';
+		CALL SYS.INITIALIZE_BABELFISH(:'user');
+	EOSQL
+	echo
+
+	echo "Adding $POSTGRES_DB to postgresql.conf for babelfishpg_tsql.database_name"
+	echo "babelfishpg_tsql.database_name = '$POSTGRES_DB'" >> $PGDATA/postgresql.conf
 }
 
 # Loads various settings that are used elsewhere in the script
@@ -219,6 +237,7 @@ docker_setup_env() {
 
 	file_env 'POSTGRES_USER' 'postgres'
 	file_env 'POSTGRES_DB' "$POSTGRES_USER"
+	file_env 'BABELFISH_MIGRATION_MODE' 'single-db'
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
@@ -326,7 +345,10 @@ _main() {
 			docker_temp_server_start "$@"
 
 			docker_setup_db
-			#docker_process_init_files /docker-entrypoint-initdb.d/*
+
+			docker_setup_babelfish_db
+
+			docker_process_init_files /docker-entrypoint-initdb.d/*
 
 			docker_temp_server_stop
 			unset PGPASSWORD
