@@ -33,3 +33,8 @@ Messing around with BabelFish
     docker run -it -p 1433:1433 -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=test babelfish-postgres
 
     ```
+
+## Attribution
+
+I used the entrypoint wholesale from the one provided in the [Postgres docker repo](https://github.com/docker-library/postgres/blob/master/13/bullseye/docker-entrypoint.sh). I added an additional function to set up the Babelfish DB in the entrypoint on startup.
+I copied the bash to set up the listener addresses and data directory permissions from the [dockerfile in the same Postgres repo](https://github.com/docker-library/postgres/blob/master/13/bullseye/Dockerfile).
