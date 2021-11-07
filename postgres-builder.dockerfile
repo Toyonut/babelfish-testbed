@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim
+FROM debian:bullseye-slim AS builder
 
 RUN apt-get update \
     && apt-get upgrade -y \
@@ -25,7 +25,7 @@ WORKDIR /opt/postgresql_modified_for_babelfish
 ENV INSTALLATION_PATH="/usr/local/pgsql"
 
 RUN ./configure CFLAGS="${CFLAGS:--Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic}" \
-    --prefix=/usr/local/pgsql \
+    --prefix="${INSTALLATION_PATH}" \
     --enable-thread-safety \
     --enable-cassert \
     --enable-debug \
@@ -40,7 +40,7 @@ RUN ./configure CFLAGS="${CFLAGS:--Wall -Wmissing-prototypes -Wpointer-arith -Wd
     --with-python PYTHON=/usr/bin/python3 \
     --with-extra-version=" Babelfish for PostgreSQL" \
     && \
-    mkdir "$INSTALLATION_PATH" \
+    mkdir "${INSTALLATION_PATH}" \
     # Compiles the Babefish PostgreSQL engine
     && make
 
@@ -111,33 +111,55 @@ WORKDIR /opt/babelfish_extensions/contrib/babelfishpg_tsql
 RUN make \
     && make install
 
+
+FROM debian:bullseye-slim
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y bison uuid lld pkg-config gnulib libxml2-utils xsltproc libicu67 gawk \
+    zlib1g \
+    # Extras
+    python3 ca-certificates software-properties-common curl vim net-tools lsof
+
+# Packages for extensions
+RUN curl https://apt.corretto.aws/corretto.key | apt-key add - \
+    && add-apt-repository 'deb https://apt.corretto.aws stable main' \
+    && apt-get update \
+    && apt-get install -y java-1.8.0-amazon-corretto-jdk openssl unzip
+
+ENV INSTALLATION_PATH="/usr/local/pgsql"
+
+COPY --from=builder $INSTALLATION_PATH ${INSTALLATION_PATH}/
+
 RUN useradd postgres \
     && usermod -a -G postgres postgres \
-    && chown -R postgres:postgres /usr/local/pgsql \
+    && chown -R postgres:postgres ${INSTALLATION_PATH} \
     && mkdir -p /var/run/postgresql \
     && chown -R postgres:postgres /var/run/postgresql \
     && chmod 2777 /var/run/postgresql
 
 # make the sample config easier to munge (and "correct by default")
 RUN set -eux; \
-    sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" /usr/local/pgsql/share/postgresql.conf.sample; \
-    sed -ri "s+#?shared_preload_libraries.*+shared_preload_libraries = 'babelfishpg_tds'+g" /usr/local/pgsql/share/postgresql.conf.sample; \
-    grep -F "listen_addresses = '*'" /usr/local/pgsql/share/postgresql.conf.sample
+    sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" "${INSTALLATION_PATH}/share/postgresql.conf.sample"; \
+    sed -ri "s+#?shared_preload_libraries.*+shared_preload_libraries = 'babelfishpg_tds'+g" "${INSTALLATION_PATH}/share/postgresql.conf.sample"; \
+    grep -F "listen_addresses = '*'" "${INSTALLATION_PATH}/share/postgresql.conf.sample"
 
 ENV PGDATA="/var/lib/postgresql/data" \
-    PATH=$PATH:/usr/local/pgsql/bin/
+    PATH=$PATH:"${INSTALLATION_PATH}/bin/"
 # this 777 will be replaced by 700 at runtime (allows semi-arbitrary "--user" values)
 RUN mkdir -p "$PGDATA" && chown -R postgres:postgres "$PGDATA" && chmod 777 "$PGDATA"
 
 COPY entrypoint.sh /usr/local/bin/
 
-RUN chmod -R 0750 /usr/local/pgsql/share \
+RUN chmod -R 0750 "${INSTALLATION_PATH}/share" \
     && chown postgres:postgres /usr/local/bin/entrypoint.sh \
     && chmod +x /usr/local/bin/entrypoint.sh
 
-WORKDIR /usr/local/pgsql/bin/
+WORKDIR "${INSTALLATION_PATH}/bin/"
 
 USER postgres
+
+STOPSIGNAL SIGINT
 
 EXPOSE 1433
 EXPOSE 5432
