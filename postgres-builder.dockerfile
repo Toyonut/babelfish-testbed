@@ -2,10 +2,8 @@ FROM debian:bullseye-slim AS builder
 
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y build-essential flex libxml2-dev libxslt-dev libssl-dev \
-    libreadline-dev zlib1g-dev libldap2-dev libpam0g-dev bison \
-    uuid uuid-dev lld pkg-config libossp-uuid-dev gnulib \
-    libxml2-utils xsltproc icu-devtools libicu67 libicu-dev gawk \
+    && apt-get install -y build-essential flex libxml2-dev libxslt-dev bison libreadline-dev zlib1g-dev \
+    uuid-dev pkg-config libossp-uuid-dev libssl-dev icu-devtools gettext \
     # Extras
     git python3 python3-dev ca-certificates curl software-properties-common vim net-tools lsof
 
@@ -24,15 +22,10 @@ WORKDIR /opt/postgresql_modified_for_babelfish
 
 ENV INSTALLATION_PATH="/usr/local/pgsql"
 
-RUN ./configure CFLAGS="${CFLAGS:--Wall -Wmissing-prototypes -Wpointer-arith -Wdeclaration-after-statement -Wendif-labels -Wmissing-format-attribute -Wformat-security -fno-strict-aliasing -fwrapv -fexcess-precision=standard -O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic}" \
-    --prefix="${INSTALLATION_PATH}" \
-    --enable-thread-safety \
-    --enable-cassert \
+RUN ./configure CFLAGS="-ggdb" \
+  --prefix=${INSTALLATION_PATH} \
     --enable-debug \
-    --with-ldap \
-    --with-python \
     --with-libxml \
-    --with-pam \
     --with-uuid=ossp \
     --enable-nls \
     --with-libxslt \
@@ -116,7 +109,7 @@ FROM debian:bullseye-slim
 
 RUN apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y bison uuid lld pkg-config gnulib libxml2-utils xsltproc libicu67 gawk \
+    && apt-get install -y bison uuid flex gnulib libxml2-utils xsltproc libicu67 gawk gettext \
     zlib1g \
     # Extras
     python3 ca-certificates software-properties-common curl vim net-tools lsof
