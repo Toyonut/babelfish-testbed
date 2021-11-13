@@ -15,6 +15,9 @@ app.MapGet("/todoitems", async (TodoContext db) =>
 app.MapGet("/todoitems/complete", async (TodoContext db) =>
     await db.Todos.Where(t => t.IsComplete).ToListAsync());
 
+app.MapGet("/todoitems/incomplete", async (TodoContext db) =>
+    await db.Todos.Where(t => t.IsComplete == false).ToListAsync());
+
 app.MapGet("/todoitems/{id}", async (int id, TodoContext db) =>
     await db.Todos.FindAsync(id)
         is Todo todo
