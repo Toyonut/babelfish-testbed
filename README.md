@@ -29,8 +29,34 @@ Messing around with BabelFish
     # Use postgres DB
     docker run -it -p 1433:1433 -p 5432:5432 -e POSTGRES_PASSWORD=password babelfish-postgres
 
-    # Specify your own DB to use
+    # Specify your own DB to use. Note, this is still a Postgres DB.
     docker run -it -p 1433:1433 -p 5432:5432 -e POSTGRES_PASSWORD=password -e POSTGRES_DB=test babelfish-postgres
+
+    ```
+
+2. Now that we have a Postgres server running in docker, we need to connect to it using something like SSMS. The Babelfish website has [docs here](https://babelfishpg.org/docs/usage/command-line/) to connect using SSMS, tsql and the built in psql client.
+    - I connected using the SSMS intructions and created a database for the todo app.
+
+    ``` SQL
+    CREATE DATABASE todos
+    GO
+    ```
+
+3. Run the intial migration to create our todos table and then we can run the API
+
+    ``` shell
+    dotnet ef database update --project .\Babelfish-Testbed\
+    dotnet run --project .\Babelfish-Testbed\
+    ```
+
+4. Use your favourite client to start interacting with the API. I used Powershell as it was handy.
+
+    ``` shell
+    invoke-restmethod https://localhost:7015/todoitems -Method post -Body (convertto-json @{name = "write to the api"; iscomplete = $false}) -ContentType application/json
+
+    invoke-restmethod https://localhost:7015/todoitems -Method post -Body (convertto-json @{name = "read from the API"; iscomplete = $false}) -ContentType application/json
+
+    invoke-restmethod https://localhost:7015/todoitems/2 -Method put -Body (convertto-json @{name = "read from the API"; iscomplete = $true}) -ContentType application/json
 
     ```
 
