@@ -112,7 +112,7 @@ RUN apt-get update \
     && apt-get install -y bison uuid flex gnulib libxml2-utils xsltproc libicu67 gawk gettext \
     zlib1g \
     # Extras
-    python3 ca-certificates software-properties-common curl vim net-tools lsof
+    python3 ca-certificates software-properties-common curl vim net-tools lsof freetds-bin
 
 # Packages for extensions
 RUN curl https://apt.corretto.aws/corretto.key | apt-key add - \
