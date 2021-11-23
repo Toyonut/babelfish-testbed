@@ -242,7 +242,10 @@ docker_setup_babelfish_db() {
 	echo
 
 	echo "Adding $POSTGRES_DB to postgresql.conf for babelfishpg_tsql.database_name"
-	echo "babelfishpg_tsql.database_name = '$POSTGRES_DB'" >>$PGDATA/postgresql.conf
+	echo "babelfishpg_tsql.database_name = '$POSTGRES_DB'" >> $PGDATA/postgresql.conf
+
+	echo "Setting MSSQL collation to ${BABELFISH_DB_COLLATION}."
+	echo "babelfishpg_tsql.server_collation_name = '${BABELFISH_DB_COLLATION}'" >> $PGDATA/postgresql.conf
 }
 
 # Loads various settings that are used elsewhere in the script
@@ -253,6 +256,7 @@ docker_setup_env() {
 	file_env 'POSTGRES_USER' 'postgres'
 	file_env 'POSTGRES_DB' "$POSTGRES_USER"
 	file_env 'BABELFISH_MIGRATION_MODE' 'single-db'
+	file_env 'BABELFISH_DB_COLLATION' 'sql_latin1_general_cp1_ci_as'
 	file_env 'POSTGRES_INITDB_ARGS'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
