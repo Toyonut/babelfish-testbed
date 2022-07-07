@@ -21,8 +21,7 @@ RUN curl -L https://github.com/babelfish-for-postgresql/babelfish-for-postgresql
 WORKDIR /opt/postgres-babelfish   
 
 ENV JOBS=4 \
-    BABELFISH_HOME=/opt/babelfish \
-    PG_CONFIG=${BABELFISH_HOME}/1.2/bin/pg_config \
+    PG_CONFIG=/opt/babelfish/1.2/bin/pg_config \
     PG_SRC=/opt/postgres-babelfish \
     ANTLR4_VERSION=4.9.3 \
     ANTLR4_JAVA_BIN=/usr/bin/java \
@@ -47,7 +46,7 @@ RUN mkdir build && cd build \
 WORKDIR ${PG_SRC}
 
 RUN ./configure CFLAGS="-ggdb" \
-  --prefix=${BABELFISH_HOME}/1.2/ \
+  --prefix=/opt/babelfish/1.2/ \
   --enable-debug \
   --with-ldap \
   --with-libxml \
@@ -56,11 +55,11 @@ RUN ./configure CFLAGS="-ggdb" \
   --enable-nls \
   --with-libxslt \
   --with-icu \
-    && make DESTDIR=${BABELFISH_HOME}/1.2/ -j $JOBS 2>error.txt \
+    && make DESTDIR=/opt/babelfish/1.2/ -j $JOBS 2>error.txt \
     && make install
 
 RUN export cmake=$(which cmake) \
-    && cp /usr/local/lib/libantlr4-runtime.so.${ANTLR4_VERSION} ${BABELFISH_HOME}/1.2/lib
+    && cp /usr/local/lib/libantlr4-runtime.so.${ANTLR4_VERSION} /opt/babelfish/1.2/lib
 
 WORKDIR ${PG_SRC}/contrib/babelfishpg_tsql/antlr
 
@@ -72,10 +71,10 @@ RUN make -j $JOBS && make install
 
 RUN mkdir -p /var/lib/babelfish/1.2 \
     && adduser postgres --home /var/lib/babelfish --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password \
-    && chown -R postgres: ${BABELFISH_HOME}/ \
+    && chown -R postgres: /opt/babelfish/ \
     && chown -R postgres: /var/lib/babelfish/
 
-WORKDIR ${BABELFISH_HOME}/bin
+WORKDIR /opt/babelfish/bin
 
 USER postgres
 
