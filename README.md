@@ -2,6 +2,11 @@
 
 Messing around with BabelFish
 
+## Update
+
+Building against a moving GITHUB repo has caused an issue. The old instructions no longer make a working docker image...
+Updating to build against the new instructions which use snapshots of the repo.
+
 ## What is needed?
 
 1. We need to build BabelFish from source currently. May as well do that in Docker for portablilty.
