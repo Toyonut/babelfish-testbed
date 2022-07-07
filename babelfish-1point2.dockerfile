@@ -74,7 +74,7 @@ RUN mkdir -p /var/lib/babelfish/1.2 \
     && chown -R postgres: /opt/babelfish/ \
     && chown -R postgres: /var/lib/babelfish/
 
-WORKDIR /opt/babelfish/bin
+WORKDIR /opt/babelfish/1.2/bin
 
 USER postgres
 
