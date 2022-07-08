@@ -14,14 +14,15 @@ RUN apt-get update && apt install -y --no-install-recommends \
   pkg-config libutfcpp-dev \
   gnupg unixodbc-dev net-tools unzip ca-certificates wget
 
-RUN curl -L https://github.com/babelfish-for-postgresql/babelfish-for-postgresql/releases/download/BABEL_1_2_0__PG_13_6/BABEL_1_2_0__PG_13_6.tar.gz --output /opt/BABEL_1_2_0__PG_13_6.tar.gz \
-    && tar -xzvf /opt/BABEL_1_2_0__PG_13_6.tar.gz -C /opt/ \
-    && mv /opt/BABEL_1_2_0__PG_13_6 /opt/postgres-babelfish
+RUN curl -L https://github.com/babelfish-for-postgresql/babelfish-for-postgresql/releases/download/BABEL_2_1_0__PG_14_3/BABEL_2_1_0__PG_14_3.tar.gz --output /opt/BABEL_2_1_0__PG_14_3.tar.gz \
+    && tar -xzvf /opt/BABEL_2_1_0__PG_14_3.tar.gz -C /opt/ \
+    && mv /opt/BABEL_2_1_0__PG_14_3 /opt/postgres-babelfish
 
 WORKDIR /opt/postgres-babelfish   
 
 ENV JOBS=4 \
-    PG_CONFIG=/opt/babelfish/1.2/bin/pg_config \
+    BABELFISH_HOME=/opt/babelfish/2.1 \
+    PG_CONFIG=${BABELFISH_HOME}/bin/pg_config \
     PG_SRC=/opt/postgres-babelfish \
     ANTLR4_VERSION=4.9.3 \
     ANTLR4_JAVA_BIN=/usr/bin/java \
@@ -46,7 +47,7 @@ RUN mkdir build && cd build \
 WORKDIR ${PG_SRC}
 
 RUN ./configure CFLAGS="-ggdb" \
-  --prefix=/opt/babelfish/1.2/ \
+  --prefix=${BABELFISH_HOME}/ \
   --enable-debug \
   --with-ldap \
   --with-libxml \
@@ -55,27 +56,43 @@ RUN ./configure CFLAGS="-ggdb" \
   --enable-nls \
   --with-libxslt \
   --with-icu \
-    && make DESTDIR=/opt/babelfish/1.2/ -j $JOBS 2>error.txt \
+  && make DESTDIR=${BABELFISH_HOME}/ -j $JOBS 2>error.txt \
+  && make install
+
+WORKDIR ${PG_SRC}/contrib 
+
+RUN make -j ${JOBS} \
     && make install
 
 RUN export cmake=$(which cmake) \
-    && cp /usr/local/lib/libantlr4-runtime.so.${ANTLR4_VERSION} /opt/babelfish/1.2/lib
+    && cp /usr/local/lib/libantlr4-runtime.so.${ANTLR4_VERSION} ${BABELFISH_HOME}/lib
+           
+WORKDIR ${PG_SRC}/contrib/babelfishpg_tsql/antlr 
 
-WORKDIR ${PG_SRC}/contrib/babelfishpg_tsql/antlr
+RUN cmake -Wno-dev . \
+    && make all
 
-RUN cmake -Wno-dev .
+WORKDIR ${PG_SRC}/contrib
 
-WORKDIR $PG_SRC/contrib/ 
+RUN for ext in babelfishpg_common babelfishpg_money babelfishpg_tds babelfishpg_tsql; \
+    do \
+        echo "Building ${ext}"; \
+        cd $ext; \
+        make -j ${JOBS}; \
+        make PG_CONFIG=${PG_CONFIG} install; \
+        cd ..; \
+    done
 
-RUN make -j $JOBS && make install 
-
-RUN mkdir -p /var/lib/babelfish/1.2 \
+RUN mkdir -p /var/lib/babelfish/2.1 \
     && adduser postgres --home /var/lib/babelfish --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password \
     && chown -R postgres: /opt/babelfish/ \
     && chown -R postgres: /var/lib/babelfish/
 
-WORKDIR /opt/babelfish/1.2/bin
+WORKDIR /opt/babelfish/2.1/bin
 
 USER postgres
+
+ENV BABELFISH_HOME=/opt/babelfish/2.1 \
+    BABELFISH_DATA=/var/lib/babelfish/2.1/data
 
 
