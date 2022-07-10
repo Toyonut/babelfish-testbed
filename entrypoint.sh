@@ -259,6 +259,7 @@ docker_setup_env() {
 	file_env 'BABELFISH_DB_COLLATION' 'sql_latin1_general_cp1_ci_as'
 	file_env 'POSTGRES_INITDB_ARGS'
 	file_env 'POSTGRES_ENCODING' 'UTF8'
+	file_env 'PGDATA' "$BABELFISH_DATA"
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
 	declare -g DATABASE_ALREADY_EXISTS
