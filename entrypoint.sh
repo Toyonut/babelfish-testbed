@@ -91,7 +91,7 @@ docker_init_database_dir() {
 		set -- --waldir "$POSTGRES_INITDB_WALDIR" "$@"
 	fi
 
-	eval '${BABELFISH_HOME}/bin/initdb --username="$POSTGRES_USER" --pwfile=<(echo "$POSTGRES_PASSWORD") -D ${BABELFISH_DATA} '"$POSTGRES_INITDB_ARGS"' "$@"'
+	eval '${BABELFISH_HOME}/bin/initdb --username="$POSTGRES_USER" --pwfile=<(echo "$POSTGRES_PASSWORD") -D ${BABELFISH_DATA} -E ${POSTGRES_ENCODING} '"$POSTGRES_INITDB_ARGS"' "$@"'
 
 	# unset/cleanup "nss_wrapper" bits
 	if [ "${LD_PRELOAD:-}" = '/usr/lib/libnss_wrapper.so' ]; then
@@ -258,6 +258,7 @@ docker_setup_env() {
 	file_env 'BABELFISH_MIGRATION_MODE' 'single-db'
 	file_env 'BABELFISH_DB_COLLATION' 'sql_latin1_general_cp1_ci_as'
 	file_env 'POSTGRES_INITDB_ARGS'
+	file_env 'POSTGRES_ENCODING' 'UTF8'
 	: "${POSTGRES_HOST_AUTH_METHOD:=}"
 
 	declare -g DATABASE_ALREADY_EXISTS
