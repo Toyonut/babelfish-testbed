@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential flex libxml2-dev libxml2-utils \
   libxslt-dev libssl-dev libreadline-dev zlib1g-dev \
   libldap2-dev libpam0g-dev gettext uuid uuid-dev \
@@ -22,6 +22,7 @@ WORKDIR /opt/postgres-babelfish
 
 ENV JOBS=4 \
     PG_CONFIG=/opt/babelfish/1.2/bin/pg_config \
+    BABELFISH_DATA=/var/lib/babelfish/1.2/data \
     PG_SRC=/opt/postgres-babelfish \
     ANTLR4_VERSION=4.9.3 \
     ANTLR4_JAVA_BIN=/usr/bin/java \
@@ -70,12 +71,33 @@ WORKDIR $PG_SRC/contrib/
 RUN make -j $JOBS && make install 
 
 RUN mkdir -p /var/lib/babelfish/1.2 \
-    && adduser postgres --home /var/lib/babelfish --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password \
+    && adduser postgres --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password \
     && chown -R postgres: /opt/babelfish/ \
-    && chown -R postgres: /var/lib/babelfish/
+    && chown -R postgres: /var/lib/babelfish/ \
+    && usermod --home /var/lib/babelfish postgres
+
+RUN mkdir -p "${BABELFISH_DATA}" && chown -R postgres: "${BABELFISH_DATA}" && chmod 777 "${BABELFISH_DATA}"
+
+COPY entrypoint.sh /usr/local/bin/
+
+RUN chown postgres: /usr/local/bin/entrypoint.sh \
+    && chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /opt/babelfish/1.2/bin
 
 USER postgres
+
+ENV BABELFISH_HOME=/opt/babelfish/1.2 \
+    BABELFISH_DATA=/var/lib/babelfish/1.2/data
+
+STOPSIGNAL SIGINT
+
+EXPOSE 1433
+EXPOSE 5432
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["postgres"]
+
 
 
