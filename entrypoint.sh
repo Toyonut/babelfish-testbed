@@ -37,9 +37,9 @@ docker_create_db_directories() {
 	local user
 	user="$(id -u)"
 
-	mkdir -p "$PGDATA"
+	mkdir -p "$BABELFISH_DATA"
 	# ignore failure since there are cases where we can't chmod (and PostgreSQL might fail later anyhow - it's picky about permissions of this directory)
-	chmod 700 "$PGDATA" || :
+	chmod 700 "$BABELFISH_DATA" || :
 
 	# ignore failure since it will be fine when using the image provided directory; see also https://github.com/docker-library/postgres/pull/289
 	mkdir -p /var/run/postgresql || :
@@ -56,12 +56,12 @@ docker_create_db_directories() {
 
 	# allow the container to be started with `--user`
 	if [ "$user" = '0' ]; then
-		find "$PGDATA" \! -user postgres -exec chown postgres '{}' +
+		find "$BABELFISH_DATA" \! -user postgres -exec chown postgres '{}' +
 		find /var/run/postgresql \! -user postgres -exec chown postgres '{}' +
 	fi
 }
 
-# initialize empty PGDATA directory with new database via 'initdb'
+# initialize empty BABELFISH_DATA directory with new database via 'initdb'
 # arguments to `initdb` can be passed via POSTGRES_INITDB_ARGS or as arguments to this function
 # `initdb` automatically creates the "postgres", "template0", and "template1" dbnames
 # this is also where the database user is created, specified by `POSTGRES_USER` env
@@ -80,7 +80,7 @@ docker_init_database_dir() {
 				export LD_PRELOAD="$wrapper" NSS_WRAPPER_PASSWD NSS_WRAPPER_GROUP
 				local gid
 				gid="$(id -g)"
-				echo "postgres:x:$uid:$gid:PostgreSQL:$PGDATA:/bin/false" >"$NSS_WRAPPER_PASSWD"
+				echo "postgres:x:$uid:$gid:PostgreSQL:$BABELFISH_DATA:/bin/false" >"$NSS_WRAPPER_PASSWD"
 				echo "postgres:x:$gid:" >"$NSS_WRAPPER_GROUP"
 				break
 			fi
@@ -91,7 +91,7 @@ docker_init_database_dir() {
 		set -- --waldir "$POSTGRES_INITDB_WALDIR" "$@"
 	fi
 
-	eval 'initdb --username="$POSTGRES_USER" --pwfile=<(echo "$POSTGRES_PASSWORD") '"$POSTGRES_INITDB_ARGS"' "$@"'
+	eval '${BABELFISH_HOME}/bin/initdb --username="$POSTGRES_USER" --pwfile=<(echo "$POSTGRES_PASSWORD") -D ${BABELFISH_DATA} '"$POSTGRES_INITDB_ARGS"' "$@"'
 
 	# unset/cleanup "nss_wrapper" bits
 	if [ "${LD_PRELOAD:-}" = '/usr/lib/libnss_wrapper.so' ]; then
@@ -202,7 +202,7 @@ docker_process_init_files() {
 #    ie: docker_process_sql -f my-file.sql
 #    ie: docker_process_sql <my-file.sql
 docker_process_sql() {
-	local query_runner=(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc)
+	local query_runner=(${BABELFISH_HOME}/bin/psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --no-password --no-psqlrc)
 	if [ -n "$POSTGRES_DB" ]; then
 		query_runner+=(--dbname "$POSTGRES_DB")
 	fi
@@ -242,10 +242,10 @@ docker_setup_babelfish_db() {
 	echo
 
 	echo "Adding $POSTGRES_DB to postgresql.conf for babelfishpg_tsql.database_name"
-	echo "babelfishpg_tsql.database_name = '$POSTGRES_DB'" >> $PGDATA/postgresql.conf
+	echo "babelfishpg_tsql.database_name = '$POSTGRES_DB'" >> $BABELFISH_DATA/postgresql.conf
 
 	echo "Setting MSSQL collation to ${BABELFISH_DB_COLLATION}."
-	echo "babelfishpg_tsql.server_collation_name = '${BABELFISH_DB_COLLATION}'" >> $PGDATA/postgresql.conf
+	echo "babelfishpg_tsql.server_collation_name = '${BABELFISH_DB_COLLATION}'" >> $BABELFISH_DATA/postgresql.conf
 }
 
 # Loads various settings that are used elsewhere in the script
@@ -262,7 +262,7 @@ docker_setup_env() {
 
 	declare -g DATABASE_ALREADY_EXISTS
 	# look specifically for PG_VERSION, as it is expected in the DB dir
-	if [ -s "$PGDATA/PG_VERSION" ]; then
+	if [ -s "$BABELFISH_DATA/PG_VERSION" ]; then
 		DATABASE_ALREADY_EXISTS='true'
 	fi
 }
@@ -277,7 +277,7 @@ pg_setup_hba_conf() {
 	fi
 	local auth
 	# check the default/configured encryption and use that as the auth method
-	auth="$(postgres -C password_encryption "$@")"
+	auth="$(${BABELFISH_HOME}/bin/postgres -C password_encryption -D ${BABELFISH_DATA} "$@")"
 	# postgres 9 only reports "on" and not "md5"
 	if [ "$auth" = 'on' ]; then
 		auth='md5'
@@ -290,7 +290,7 @@ pg_setup_hba_conf() {
 			echo '# see https://www.postgresql.org/docs/12/auth-trust.html'
 		fi
 		echo "host all all all $POSTGRES_HOST_AUTH_METHOD"
-	} >>"$PGDATA/pg_hba.conf"
+	} >>"$BABELFISH_DATA/pg_hba.conf"
 }
 
 # start socket-only postgresql server for setting up or running scripts
@@ -305,7 +305,7 @@ docker_temp_server_start() {
 	set -- "$@" -c listen_addresses='' -p "${PGPORT:-5432}"
 
 	PGUSER="${PGUSER:-$POSTGRES_USER}" \
-		pg_ctl -D "$PGDATA" \
+		${BABELFISH_HOME}/bin/pg_ctl -D "$BABELFISH_DATA" \
 		-o "$(printf '%q ' "$@")" \
 		-w start
 }
@@ -313,7 +313,7 @@ docker_temp_server_start() {
 # stop postgresql server after done setting up user and running scripts
 docker_temp_server_stop() {
 	PGUSER="${PGUSER:-postgres}" \
-		pg_ctl -D "$PGDATA" -m fast -w stop
+		${BABELFISH_HOME}/bin/pg_ctl -D "$BABELFISH_DATA" -m fast -w stop
 }
 
 # check arguments for an option that would cause postgres to stop
