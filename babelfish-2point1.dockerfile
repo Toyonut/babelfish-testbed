@@ -103,6 +103,16 @@ WORKDIR /opt/babelfish/2.1/bin
 
 USER postgres
 
+ENV BABELFISH_HOME=/opt/babelfish/2.1 \
+    BABELFISH_DATA=/var/lib/babelfish/2.1/data \
+    PATH="/opt/babelfish/2.1/bin:${PATH}"
+
+# make the sample config easier to munge (and "correct by default")
+RUN set -eux; \
+    sed -ri "s!^#?(listen_addresses)\s*=\s*\S+.*!\1 = '*'!" "${BABELFISH_HOME}/share/postgresql/postgresql.conf.sample"; \
+    sed -ri "s+#?shared_preload_libraries.*+shared_preload_libraries = 'babelfishpg_tds'+g" "${BABELFISH_HOME}/share/postgresql/postgresql.conf.sample"; \
+    grep -F "listen_addresses = '*'" "${BABELFISH_HOME}/share/postgresql/postgresql.conf.sample"
+
 STOPSIGNAL SIGINT
 
 EXPOSE 1433
